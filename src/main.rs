@@ -21,9 +21,8 @@ fn login() -> Result<(), Error> {
         {
             if child.wait().is_ok() {
                 return Ok(());
-            } else {
-                return Err(Error::last_os_error());
             }
+            return Err(Error::last_os_error());
         }
     }
     Err(Error::last_os_error())
@@ -33,9 +32,8 @@ fn logout() -> Result<(), Error> {
     if let Ok(mut child) = Command::new("docker").arg("logout").spawn() {
         if child.wait().is_ok() {
             return Ok(());
-        } else {
-            return Err(Error::last_os_error());
         }
+        return Err(Error::last_os_error());
     }
     Err(Error::last_os_error())
 }
@@ -154,9 +152,8 @@ fn deploy() -> Result<(), Error> {
     Err(Error::last_os_error())
 }
 
-fn help() -> Result<(), Error> {
+fn help() {
     println!("tux [ login|logout|deploy]");
-    Ok(())
 }
 fn main() -> Result<(), Error> {
     let args: Vec<String> = args().collect();
@@ -171,5 +168,6 @@ fn main() -> Result<(), Error> {
             }
         }
     };
-    help()
+    help();
+    Ok(())
 }
