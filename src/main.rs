@@ -43,11 +43,8 @@ fn logout() -> Result<(), Error> {
 fn deploy() -> Result<(), Error> {
     if let Ok(config) = read_to_string("tux.toml") {
         if let Ok(tux) = toml::from_str::<Value>(config.as_str()) {
-            dbg!(&tux);
             if let Ok(server) = Text::new("Please enter the server name to deploy : ").prompt() {
-                // Accéder aux valeurs
                 if let Some(ip) = tux.get(server.as_str()).and_then(|lab| lab.get("ip")) {
-                    // Accéder aux valeurs
                     if let Some(services) =
                         tux.get(server.as_str()).and_then(|lab| lab.get("services"))
                     {
@@ -158,7 +155,7 @@ fn deploy() -> Result<(), Error> {
 }
 
 fn help() -> Result<(), Error> {
-    println!("tux [ login|logout|new]");
+    println!("tux [ login|logout|deploy]");
     Ok(())
 }
 fn main() -> Result<(), Error> {
