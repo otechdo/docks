@@ -1,0 +1,3 @@
+[lab]
+ip = "lab.ji"
+services = ["picsou"]

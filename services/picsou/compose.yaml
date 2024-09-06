@@ -1,0 +1,5 @@
+services:
+  picsou:
+    image: otechdo/picsou:latest
+    ports:
+      - 3000:3000
