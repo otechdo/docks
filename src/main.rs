@@ -1,11 +1,11 @@
 use inquire::Text;
+use std::path::Path;
 use std::{
     env::args,
     fs::read_to_string,
     io::{Error, ErrorKind},
     process::Command,
 };
-use std::path::Path;
 use toml::Value;
 
 fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
@@ -94,12 +94,14 @@ fn running(user: &str, ip: &str) -> Result<(), Error> {
     ssh_run(&["docker", "ps"], user, ip)
 }
 
-fn build(tag: &str) -> Result<(), Error>
-{
+fn build(tag: &str) -> Result<(), Error> {
     if Path::new("Dockerfile").is_file() {
         return docker("buildx", &["build", "-t", tag, "."], ".");
     }
     Err(Error::new(ErrorKind::NotFound, "Dockerfile not found"))
+}
+fn publish(container: &str) -> Result<(), Error> {
+    docker("push", &[container], "/tmp")
 }
 fn deploy() -> Result<(), Error> {
     let tux = configuration()?;
@@ -191,7 +193,11 @@ fn deploy() -> Result<(), Error> {
 }
 
 fn help() {
-    println!("tux [ login|logout|deploy|build ]");
+    println!("tux login");
+    println!("tux logout");
+    println!("tux deploy");
+    println!("tux build <image>");
+    println!("tux push  <image>");
 }
 fn main() -> Result<(), Error> {
     let args: Vec<String> = args().collect();
@@ -226,10 +232,11 @@ fn main() -> Result<(), Error> {
         }
     } else if args.len().eq(&3) {
         if let Some(a) = args.get(1) {
-            if let Some(b) = args.get(2)
-            {
+            if let Some(b) = args.get(2) {
                 if a.eq("build") && b.is_empty().eq(&false) {
                     return build(b.as_str());
+                } else if a.eq("push") && b.is_empty().eq(&false) {
+                    return publish(b.as_str());
                 }
             }
         }
