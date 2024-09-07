@@ -28,12 +28,8 @@ fn ssh_run(args: &[&str], user: &str, ip: &str) -> Result<(), Error> {
         .spawn()
     {
         return match cmd.wait() {
-            Ok(_) => {
-                Ok(())
-            }
-            Err(e) => {
-                Err(e)
-            }
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
         };
     }
     Err(Error::new(ErrorKind::NotFound, "ssh not found"))
@@ -51,12 +47,8 @@ fn upload_image(user: &str, ip: &str, s: &str) -> Result<(), Error> {
         .spawn()
     {
         return match cmd.wait() {
-            Ok(_) => {
-                Ok(())
-            }
-            Err(e) => {
-                Err(e)
-            }
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
         };
     }
     Err(Error::new(ErrorKind::NotFound, "rsync not found"))
@@ -97,18 +89,8 @@ fn configuration() -> Result<Value, Error> {
     Err(Error::last_os_error())
 }
 
-fn running(user: &str, ip: &str) -> Result<(), Error>
-{
-    assert!(ssh_run(
-        &[
-            "docker",
-            "ps",
-        ],
-        user,
-        ip
-    )
-        .is_ok());
-    Ok(())
+fn running(user: &str, ip: &str) -> Result<(), Error> {
+    ssh_run(&["docker", "ps"], user, ip)
 }
 fn deploy() -> Result<(), Error> {
     let tux = configuration()?;
@@ -128,14 +110,21 @@ fn deploy() -> Result<(), Error> {
                 {
                     if let Some(images) = services.as_array() {
                         for image in images {
-                            println!("\x1b[1;32m    Tux\x1b[1;37m Upload {} on {}\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default(), );
+                            println!(
+                                "\x1b[1;32m    Tux\x1b[1;37m Upload {} on {}\x1b[0m",
+                                image.as_str().unwrap_or_default(),
+                                ip.as_str().unwrap_or_default(),
+                            );
                             assert!(upload_image(
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                                 image.as_str().unwrap_or_default()
                             )
-                                .is_ok());
-                            println!("\x1b[1;32m    Tux\x1b[1;37m {} uploded successfully\x1b[0m", image.as_str().unwrap_or_default());
+                            .is_ok());
+                            println!(
+                                "\x1b[1;32m    Tux\x1b[1;37m {} uploded successfully\x1b[0m",
+                                image.as_str().unwrap_or_default()
+                            );
                             println!("\x1b[1;32m    Tux\x1b[1;37m Stop {} container before upgrade\x1b[0m", image.as_str().unwrap_or_default());
                             assert!(ssh_run(
                                 &[
@@ -148,7 +137,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                             )
-                                .is_ok());
+                            .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m {} container stoped successfully\x1b[0m", image.as_str().unwrap_or_default());
                             println!("\x1b[1;32m    Tux\x1b[1;37m Start update of the {} container\x1b[0m", image.as_str().unwrap_or_default());
                             assert!(ssh_run(
@@ -162,9 +151,12 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default()
                             )
-                                .is_ok());
+                            .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m The {} container has been updated successfully\x1b[0m", image.as_str().unwrap_or_default());
-                            println!("\x1b[1;32m    Tux\x1b[1;37m Start the {} container\x1b[0m", image.as_str().unwrap_or_default());
+                            println!(
+                                "\x1b[1;32m    Tux\x1b[1;37m Start the {} container\x1b[0m",
+                                image.as_str().unwrap_or_default()
+                            );
 
                             assert!(ssh_run(
                                 &[
@@ -178,7 +170,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                             )
-                                .is_ok());
+                            .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m The container {} is now uploded on the {} server\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
                         }
                     }
@@ -214,7 +206,10 @@ fn main() -> Result<(), Error> {
                             .get(server.as_str())
                             .and_then(|value: &Value| value.get("ip"))
                         {
-                            return running(username.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
+                            return running(
+                                username.as_str().unwrap_or_default(),
+                                ip.as_str().unwrap_or_default(),
+                            );
                         }
                     }
                 }
