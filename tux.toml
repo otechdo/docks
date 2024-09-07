@@ -1,3 +1,4 @@
 [lab]
+username = "root"
 ip = "lab.ji"
 services = ["picsou"]

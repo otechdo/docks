@@ -1,159 +1,196 @@
+use inquire::Text;
 use std::{
     env::args,
     fs::read_to_string,
     io::{Error, ErrorKind},
     process::Command,
 };
-
-use inquire::Text;
 use toml::Value;
 
+fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
+    if let Ok(mut child) = Command::new("docker")
+        .arg(verb)
+        .args(args)
+        .current_dir(path)
+        .spawn()
+    {
+        return match child.wait() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        };
+    }
+    Err(Error::new(ErrorKind::NotFound, "docker not found"))
+}
+fn ssh_run(args: &[&str], user: &str, ip: &str) -> Result<(), Error> {
+    if let Ok(mut cmd) = Command::new("ssh")
+        .arg(format!("{user}@{ip}").as_str())
+        .args(args)
+        .spawn()
+    {
+        return match cmd.wait() {
+            Ok(_) => {
+                Ok(())
+            }
+            Err(e) => {
+                Err(e)
+            }
+        };
+    }
+    Err(Error::new(ErrorKind::NotFound, "ssh not found"))
+}
+
+fn upload_image(user: &str, ip: &str, s: &str) -> Result<(), Error> {
+    println!("\x1b[1;32m    Tux\x1b[1;37m Sending {s} image to the server\x1b[0m");
+    if let Ok(mut cmd) = Command::new("rsync")
+        .arg("-a")
+        .arg("-z")
+        .arg("-e")
+        .arg("ssh")
+        .arg(format!("./services/{s}/").as_str())
+        .arg(format!("{user}@{ip}:{s}").as_str())
+        .spawn()
+    {
+        return match cmd.wait() {
+            Ok(_) => {
+                Ok(())
+            }
+            Err(e) => {
+                Err(e)
+            }
+        };
+    }
+    Err(Error::new(ErrorKind::NotFound, "rsync not found"))
+}
+
 fn login() -> Result<(), Error> {
-    if let Ok(username) = Text::new("Please enter your docker username : ")
+    let username = Text::new("Please enter your docker username : ")
         .with_default(env!("USER"))
         .prompt()
-    {
-        if let Ok(mut child) = Command::new("docker")
-            .arg("login")
-            .arg("-u")
-            .arg(username.as_str())
-            .spawn()
-        {
-            if child.wait().is_ok() {
-                return Ok(());
-            }
-            return Err(Error::last_os_error());
-        }
-    }
-    Err(Error::last_os_error())
+        .unwrap_or_default();
+    docker("login", &["-u", username.as_str()], "/tmp")
 }
 
 fn logout() -> Result<(), Error> {
-    if let Ok(mut child) = Command::new("docker").arg("logout").spawn() {
-        if child.wait().is_ok() {
-            return Ok(());
+    docker("logout", &[], "/tmp")
+}
+
+fn servers() -> Result<Vec<String>, Error> {
+    let mut servers: Vec<String> = Vec::new();
+    if let Ok(config) = configuration() {
+        if let Some(tables) = config.as_table() {
+            for (server_name, _) in tables {
+                servers.push(server_name.to_string());
+            }
+            return Ok(servers);
+        }
+        return Err(Error::new(ErrorKind::InvalidData, "must be a table"));
+    }
+    Err(Error::new(ErrorKind::NotFound, "Missing configuration"))
+}
+fn configuration() -> Result<Value, Error> {
+    if let Ok(conf) = read_to_string("tux.toml") {
+        if let Ok(config) = toml::from_str::<Value>(&conf) {
+            return Ok(config);
         }
         return Err(Error::last_os_error());
     }
     Err(Error::last_os_error())
 }
 
+fn running(user: &str, ip: &str) -> Result<(), Error>
+{
+    assert!(ssh_run(
+        &[
+            "docker",
+            "ps",
+        ],
+        user,
+        ip
+    )
+        .is_ok());
+    Ok(())
+}
 fn deploy() -> Result<(), Error> {
-    if let Ok(config) = read_to_string("tux.toml") {
-        if let Ok(tux) = toml::from_str::<Value>(config.as_str()) {
-            if let Ok(server) = Text::new("Please enter the server name to deploy : ").prompt() {
-                if let Some(ip) = tux.get(server.as_str()).and_then(|lab| lab.get("ip")) {
-                    if let Some(services) =
-                        tux.get(server.as_str()).and_then(|lab| lab.get("services"))
-                    {
-                        if let Some(to_deploy) = services.as_array() {
-                            for service in to_deploy {
-                                if let Some(address) = ip.as_str() {
-                                    if let Some(x) = service.as_str() {
-                                        if let Ok(mut config) = Command::new("docker")
-                                            .arg("compose")
-                                            .arg("config")
-                                            .current_dir(format!("services/{x}").as_str())
-                                            .spawn()
-                                        {
-                                            if config.wait().is_err() {
-                                                println!("{x} skipped compose.yaml no valid");
-                                                continue;
-                                            }
-                                        }
+    let tux = configuration()?;
+    let servers: Vec<String> = servers()?;
+    for server in servers {
+        if let Some(username) = tux
+            .get(server.as_str())
+            .and_then(|value: &Value| value.get("username"))
+        {
+            if let Some(ip) = tux
+                .get(server.as_str())
+                .and_then(|value: &Value| value.get("ip"))
+            {
+                if let Some(services) = tux
+                    .get(server.as_str())
+                    .and_then(|value: &Value| value.get("services"))
+                {
+                    if let Some(images) = services.as_array() {
+                        for image in images {
+                            println!("\x1b[1;32m    Tux\x1b[1;37m Upload {} on {}\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default(), );
+                            assert!(upload_image(
+                                username.as_str().unwrap_or_default(),
+                                ip.as_str().unwrap_or_default(),
+                                image.as_str().unwrap_or_default()
+                            )
+                                .is_ok());
+                            println!("\x1b[1;32m    Tux\x1b[1;37m {} uploded successfully\x1b[0m", image.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m    Tux\x1b[1;37m Stop {} container before upgrade\x1b[0m", image.as_str().unwrap_or_default());
+                            assert!(ssh_run(
+                                &[
+                                    "docker",
+                                    "compose",
+                                    "--project-directory",
+                                    image.as_str().unwrap_or_default(),
+                                    "down",
+                                ],
+                                username.as_str().unwrap_or_default(),
+                                ip.as_str().unwrap_or_default(),
+                            )
+                                .is_ok());
+                            println!("\x1b[1;32m    Tux\x1b[1;37m {} container stoped successfully\x1b[0m", image.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m    Tux\x1b[1;37m Start update of the {} container\x1b[0m", image.as_str().unwrap_or_default());
+                            assert!(ssh_run(
+                                &[
+                                    "docker",
+                                    "compose",
+                                    "--project-directory",
+                                    image.as_str().unwrap_or_default(),
+                                    "pull",
+                                ],
+                                username.as_str().unwrap_or_default(),
+                                ip.as_str().unwrap_or_default()
+                            )
+                                .is_ok());
+                            println!("\x1b[1;32m    Tux\x1b[1;37m The {} container has been updated successfully\x1b[0m", image.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m    Tux\x1b[1;37m Start the {} container\x1b[0m", image.as_str().unwrap_or_default());
 
-                                        if let Ok(mut build) = Command::new("docker")
-                                            .arg("compose")
-                                            .arg("build")
-                                            .arg("--no-cache")
-                                            .current_dir(format!("services/{x}").as_str())
-                                            .spawn()
-                                        {
-                                            if build.wait().is_err() {
-                                                println!("{x} skipped compose.yaml no valid");
-                                                continue;
-                                            }
-                                        }
-
-                                        if let Ok(mut pull) = Command::new("docker")
-                                            .arg("compose")
-                                            .arg("pull")
-                                            .current_dir(format!("services/{x}").as_str())
-                                            .spawn()
-                                        {
-                                            if let Ok(code) = pull.wait() {
-                                                if code.success().eq(&false) {
-                                                    continue;
-                                                }
-                                            }
-                                        }
-
-                                        if let Ok(mut rsync) = Command::new("rsync")
-                                            .arg("-a")
-                                            .arg("-z")
-                                            .arg("-e")
-                                            .arg("ssh")
-                                            .arg(format!("./services/{x}/"))
-                                            .arg(format!("root@{address}:{x}").as_str())
-                                            .spawn()
-                                        {
-                                            if rsync.wait().is_ok() {
-                                                if let Ok(mut docker) = Command::new("ssh")
-                                                            .arg(format!("root@{address}").as_str())
-                                                            .arg(format!("docker compose --project-directory {x} up -d").as_str())                                                        .spawn()
-                                                        {
-                                                            if docker.wait().is_ok() {
-                                                                println!("{}",format!("service {x} started successfully").as_str()); 
-                                                            } else {
-                                                                println!(
-                                                                    "{}",
-                                                                    format!("failed to start {x}")
-                                                                        .as_str()
-                                                                );
-                                                            }
-                                                        }
-                                            } else {
-                                                println!(
-                                                    "{}",
-                                                    format!("failed to deploy {x}").as_str()
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            return Ok(());
+                            assert!(ssh_run(
+                                &[
+                                    "docker",
+                                    "compose",
+                                    "--project-directory",
+                                    image.as_str().unwrap_or_default(),
+                                    "up",
+                                    "-d",
+                                ],
+                                username.as_str().unwrap_or_default(),
+                                ip.as_str().unwrap_or_default(),
+                            )
+                                .is_ok());
+                            println!("\x1b[1;32m    Tux\x1b[1;37m The container {} is now uploded on the {} server\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
                         }
-                        return Err(Error::new(
-                            ErrorKind::InvalidData,
-                            "Failed to parse services",
-                        ));
                     }
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        "Failed to get server services",
-                    ));
                 }
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "Failed to get server address",
-                ));
             }
-            return Err(Error::new(
-                ErrorKind::InvalidData,
-                "Failed to get server name",
-            ));
         }
-        return Err(Error::new(
-            ErrorKind::InvalidData,
-            "Failed to parse the config",
-        ));
     }
-    Err(Error::last_os_error())
+    Ok(())
 }
 
 fn help() {
-    println!("tux [ login|logout|deploy]");
+    println!("tux [ login|logout|deploy ]");
 }
 fn main() -> Result<(), Error> {
     let args: Vec<String> = args().collect();
@@ -165,6 +202,22 @@ fn main() -> Result<(), Error> {
                 return logout();
             } else if x.eq("deploy") {
                 return deploy();
+            } else if x.eq("running") {
+                let tux = configuration()?;
+                let servers = servers()?;
+                for server in &servers {
+                    if let Some(username) = tux
+                        .get(server.as_str())
+                        .and_then(|value: &Value| value.get("username"))
+                    {
+                        if let Some(ip) = tux
+                            .get(server.as_str())
+                            .and_then(|value: &Value| value.get("ip"))
+                        {
+                            return running(username.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
+                        }
+                    }
+                }
             }
         }
     };
