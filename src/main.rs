@@ -5,6 +5,7 @@ use std::{
     io::{Error, ErrorKind},
     process::Command,
 };
+use std::path::Path;
 use toml::Value;
 
 fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
@@ -92,6 +93,14 @@ fn configuration() -> Result<Value, Error> {
 fn running(user: &str, ip: &str) -> Result<(), Error> {
     ssh_run(&["docker", "ps"], user, ip)
 }
+
+fn build(tag: &str) -> Result<(), Error>
+{
+    if Path::new("Dockerfile").is_file() {
+        return docker("buildx", &["build", "-t", tag, "."], ".");
+    }
+    Err(Error::new(ErrorKind::NotFound, "Dockerfile not found"))
+}
 fn deploy() -> Result<(), Error> {
     let tux = configuration()?;
     let servers: Vec<String> = servers()?;
@@ -120,7 +129,7 @@ fn deploy() -> Result<(), Error> {
                                 ip.as_str().unwrap_or_default(),
                                 image.as_str().unwrap_or_default()
                             )
-                            .is_ok());
+                                .is_ok());
                             println!(
                                 "\x1b[1;32m    Tux\x1b[1;37m {} uploded successfully\x1b[0m",
                                 image.as_str().unwrap_or_default()
@@ -137,7 +146,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                             )
-                            .is_ok());
+                                .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m {} container stoped successfully\x1b[0m", image.as_str().unwrap_or_default());
                             println!("\x1b[1;32m    Tux\x1b[1;37m Start update of the {} container\x1b[0m", image.as_str().unwrap_or_default());
                             assert!(ssh_run(
@@ -151,7 +160,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default()
                             )
-                            .is_ok());
+                                .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m The {} container has been updated successfully\x1b[0m", image.as_str().unwrap_or_default());
                             println!(
                                 "\x1b[1;32m    Tux\x1b[1;37m Start the {} container\x1b[0m",
@@ -170,7 +179,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                             )
-                            .is_ok());
+                                .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m The container {} is now uploded on the {} server\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
                         }
                     }
@@ -182,7 +191,7 @@ fn deploy() -> Result<(), Error> {
 }
 
 fn help() {
-    println!("tux [ login|logout|deploy ]");
+    println!("tux [ login|logout|deploy|build ]");
 }
 fn main() -> Result<(), Error> {
     let args: Vec<String> = args().collect();
@@ -215,7 +224,16 @@ fn main() -> Result<(), Error> {
                 }
             }
         }
-    };
+    } else if args.len().eq(&3) {
+        if let Some(a) = args.get(1) {
+            if let Some(b) = args.get(2)
+            {
+                if a.eq("build") && b.is_empty().eq(&false) {
+                    return build(b.as_str());
+                }
+            }
+        }
+    }
     help();
     Ok(())
 }
