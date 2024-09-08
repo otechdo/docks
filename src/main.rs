@@ -131,7 +131,7 @@ fn deploy() -> Result<(), Error> {
                                 ip.as_str().unwrap_or_default(),
                                 image.as_str().unwrap_or_default()
                             )
-                                .is_ok());
+                            .is_ok());
                             println!(
                                 "\x1b[1;32m    Tux\x1b[1;37m {} uploded successfully\x1b[0m",
                                 image.as_str().unwrap_or_default()
@@ -148,7 +148,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                             )
-                                .is_ok());
+                            .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m {} container stoped successfully\x1b[0m", image.as_str().unwrap_or_default());
                             println!("\x1b[1;32m    Tux\x1b[1;37m Start update of the {} container\x1b[0m", image.as_str().unwrap_or_default());
                             assert!(ssh_run(
@@ -162,7 +162,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default()
                             )
-                                .is_ok());
+                            .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m The {} container has been updated successfully\x1b[0m", image.as_str().unwrap_or_default());
                             println!(
                                 "\x1b[1;32m    Tux\x1b[1;37m Start the {} container\x1b[0m",
@@ -181,7 +181,7 @@ fn deploy() -> Result<(), Error> {
                                 username.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                             )
-                                .is_ok());
+                            .is_ok());
                             println!("\x1b[1;32m    Tux\x1b[1;37m The container {} is now uploded on the {} server\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
                         }
                     }
