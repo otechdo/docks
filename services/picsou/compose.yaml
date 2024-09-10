@@ -1,5 +1,6 @@
 services:
   picsou:
     image: otechdo/picsou:latest
+    restart: always
     ports:
-      - 3000:3000
+      - "3000:3000"
