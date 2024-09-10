@@ -1,12 +1,12 @@
 [package]
-name = "tux"
+name = "docks"
 version = "1.0.0"
 edition = "2021"
 description = "A docker compose uploading tool"
 categories = ["command-line-utilities"]
 authors = ["Willy Micieli"]
 license = "AGPL-3.0"
-repository = "https://github.com/otechdo/tux"
+repository = "https://github.com/otechdo/docks"
 readme = "README.md"
 
 [dependencies]

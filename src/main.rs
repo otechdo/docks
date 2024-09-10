@@ -37,7 +37,7 @@ fn ssh_run(args: &[&str], user: &str, ip: &str) -> Result<(), Error> {
 }
 
 fn upload_image(user: &str, ip: &str, s: &str) -> Result<(), Error> {
-    println!("\x1b[1;32m    Tux\x1b[1;37m Sending {s} image to the server\x1b[0m");
+    println!("\x1b[1;32m      Docks\x1b[1;37m Sending {s} image to the server\x1b[0m");
     if let Ok(mut cmd) = Command::new("rsync")
         .arg("-a")
         .arg("-z")
@@ -122,7 +122,7 @@ fn deploy() -> Result<(), Error> {
                     if let Some(images) = services.as_array() {
                         for image in images {
                             println!(
-                                "\x1b[1;32m    Tux\x1b[1;37m Upload {} on {}\x1b[0m",
+                                "\x1b[1;32m      Docks\x1b[1;37m Upload {} on {}\x1b[0m",
                                 image.as_str().unwrap_or_default(),
                                 ip.as_str().unwrap_or_default(),
                             );
@@ -133,10 +133,10 @@ fn deploy() -> Result<(), Error> {
                             )
                             .is_ok());
                             println!(
-                                "\x1b[1;32m    Tux\x1b[1;37m {} uploded successfully\x1b[0m",
+                                "\x1b[1;32m      Docks\x1b[1;37m {} uploded successfully\x1b[0m",
                                 image.as_str().unwrap_or_default()
                             );
-                            println!("\x1b[1;32m    Tux\x1b[1;37m Stop {} container before upgrade\x1b[0m", image.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m      Docks\x1b[1;37m Stop {} container before upgrade\x1b[0m", image.as_str().unwrap_or_default());
                             assert!(ssh_run(
                                 &[
                                     "docker",
@@ -149,8 +149,8 @@ fn deploy() -> Result<(), Error> {
                                 ip.as_str().unwrap_or_default(),
                             )
                             .is_ok());
-                            println!("\x1b[1;32m    Tux\x1b[1;37m {} container stoped successfully\x1b[0m", image.as_str().unwrap_or_default());
-                            println!("\x1b[1;32m    Tux\x1b[1;37m Start update of the {} container\x1b[0m", image.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m      Docks\x1b[1;37m {} container stoped successfully\x1b[0m", image.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m      Docks\x1b[1;37m Start update of the {} container\x1b[0m", image.as_str().unwrap_or_default());
                             assert!(ssh_run(
                                 &[
                                     "docker",
@@ -163,9 +163,9 @@ fn deploy() -> Result<(), Error> {
                                 ip.as_str().unwrap_or_default()
                             )
                             .is_ok());
-                            println!("\x1b[1;32m    Tux\x1b[1;37m The {} container has been updated successfully\x1b[0m", image.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m      Docks\x1b[1;37m The {} container has been updated successfully\x1b[0m", image.as_str().unwrap_or_default());
                             println!(
-                                "\x1b[1;32m    Tux\x1b[1;37m Start the {} container\x1b[0m",
+                                "\x1b[1;32m      Docks\x1b[1;37m Start the {} container\x1b[0m",
                                 image.as_str().unwrap_or_default()
                             );
 
@@ -182,7 +182,7 @@ fn deploy() -> Result<(), Error> {
                                 ip.as_str().unwrap_or_default(),
                             )
                             .is_ok());
-                            println!("\x1b[1;32m    Tux\x1b[1;37m The container {} is now uploded on the {} server\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
+                            println!("\x1b[1;32m      Docks\x1b[1;37m The container {} is now uploded on the {} server\x1b[0m", image.as_str().unwrap_or_default(), ip.as_str().unwrap_or_default());
                         }
                     }
                 }
@@ -193,11 +193,11 @@ fn deploy() -> Result<(), Error> {
 }
 
 fn help() {
-    println!("tux login");
-    println!("tux logout");
-    println!("tux deploy");
-    println!("tux build <image>");
-    println!("tux push <images>");
+    println!("docks login");
+    println!("docks logout");
+    println!("docks deploy");
+    println!("docks build <image>");
+    println!("docks push <images>");
 }
 fn main() -> Result<(), Error> {
     let args: Vec<String> = args().collect();

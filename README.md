@@ -1,4 +1,4 @@
-# Tux
+# Docks
 
 > A docker compose uploading tool.
 
@@ -13,13 +13,13 @@
 ## Installation
 
 ```bash
-cargo install tux
+cargo install docks
 ```
 
 ## Uninstall
 
 ```bash
-cargo uninstall tux
+cargo uninstall docks
 ```
 
 # Structure
@@ -87,35 +87,35 @@ services
 ## Login
 
 ```bash
-tux login # Login to docker hub
+docks login # Login to docker hub
 ```
 
 ## Logout
 
 ```bash
-tux logout # Logout to docker hub
+docks logout # Logout to docker hub
 ```
 
 ## Running
 
 ```bash
-tux running # List all running docker container in all servers
+docks running # List all running docker container in all servers
 ```
 
 ## Deploy
 
 ```bash
-tux deploy # Send all services in the dedicated servers
+docks deploy # Send all services in the dedicated servers
 ```
 
 ## Build
 
 ```bash
-tux build <tag> # Create the image form the Dockerfile on the current directory
+docks build <tag> # Create the image form the Dockerfile on the current directory
 ```
 
 ## Build
 
 ```bash
-tux build <tag> # Create the image form the Dockerfile on the current directory
+docks build <tag> # Create the image form the Dockerfile on the current directory
 ```

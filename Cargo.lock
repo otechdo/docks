@@ -121,6 +121,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "docks"
+version = "1.0.0"
+dependencies = [
+ "inquire",
+ "toml",
+]
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -473,14 +481,6 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "winnow",
-]
-
-[[package]]
-name = "tux"
-version = "1.0.0"
-dependencies = [
- "inquire",
- "toml",
 ]
 
 [[package]]
