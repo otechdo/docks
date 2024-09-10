@@ -5,7 +5,8 @@ edition = "2021"
 description = "A docker compose uploading tool"
 categories = ["command-line-utilities"]
 authors = ["Willy Micieli"]
-license = "AGPL-3"
+license = "AGPL-3.0"
+
 [dependencies]
 inquire = { version = "0.7.5", features = ["chrono", "console"] }
 toml = "0.8.19"
