@@ -81,7 +81,7 @@ fn servers() -> Result<Vec<String>, Error> {
     Err(Error::new(ErrorKind::NotFound, "Missing configuration"))
 }
 fn configuration() -> Result<Value, Error> {
-    if let Ok(conf) = read_to_string("tux.toml") {
+    if let Ok(conf) = read_to_string("docks.toml") {
         if let Ok(config) = toml::from_str::<Value>(&conf) {
             return Ok(config);
         }
