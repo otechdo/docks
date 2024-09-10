@@ -46,7 +46,7 @@ services:
 ## The config
 
 ```toml
-# tux.toml
+# docks.toml
 
 [lab] # The server id
 username = "root" # The server connection username
