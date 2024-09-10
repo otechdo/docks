@@ -6,6 +6,8 @@ description = "A docker compose uploading tool"
 categories = ["command-line-utilities"]
 authors = ["Willy Micieli"]
 license = "AGPL-3.0"
+repository = "https://github.com/otechdo/tux"
+readme = "README.md"
 
 [dependencies]
 inquire = { version = "0.7.5", features = ["chrono", "console"] }
