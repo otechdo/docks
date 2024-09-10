@@ -57,7 +57,7 @@ services = ["picsou"] # All services to deploy on the server
 ## A config example
 
 ```toml
-# tux.toml
+# docks.toml
 
 [homelab] # The server id
 username = "root" # The server connection username
@@ -117,5 +117,5 @@ docks build <tag> # Create the image form the Dockerfile on the current director
 ## Build
 
 ```bash
-docks build <tag> # Create the image form the Dockerfile on the current directory
+docks push <images> # Push images on docker hub
 ```
