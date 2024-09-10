@@ -8,6 +8,7 @@ authors = ["Willy Micieli"]
 license = "AGPL-3.0"
 repository = "https://github.com/otechdo/docks"
 readme = "README.md"
+keywords = ["docker", "upload", "container", "management", "apps"]
 
 [dependencies]
 inquire = { version = "0.7.5", features = ["chrono", "console"] }
