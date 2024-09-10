@@ -197,7 +197,7 @@ fn help() {
     println!("tux logout");
     println!("tux deploy");
     println!("tux build <image>");
-    println!("tux push  <image>");
+    println!("tux push <images>");
 }
 fn main() -> Result<(), Error> {
     let args: Vec<String> = args().collect();
@@ -235,11 +235,14 @@ fn main() -> Result<(), Error> {
             if let Some(b) = args.get(2) {
                 if a.eq("build") && b.is_empty().eq(&false) {
                     return build(b.as_str());
-                } else if a.eq("push") && b.is_empty().eq(&false) {
-                    return publish(b.as_str());
                 }
             }
         }
+    } else if args.len().gt(&3) {
+        for image in args.iter().skip(1) {
+            assert!(publish(image.as_str()).is_ok());
+        }
+        return Ok(());
     }
     help();
     Ok(())
