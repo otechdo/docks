@@ -1,4 +1,5 @@
 [lab]
 username = "root"
 ip = "lab.ji"
-services = ["picsou"]
+port = "22"
+containers = ["picsou"]

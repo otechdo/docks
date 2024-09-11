@@ -1,6 +1,6 @@
 [package]
 name = "docks"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "A docker compose uploading tool"
 categories = ["command-line-utilities"]
@@ -11,5 +11,7 @@ readme = "README.md"
 keywords = ["docker", "upload", "container", "management", "apps"]
 
 [dependencies]
+chrono = "0.4.38"
 inquire = { version = "0.7.5", features = ["chrono", "console"] }
 toml = "0.8.19"
+log = "0.4.22"

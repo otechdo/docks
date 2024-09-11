@@ -9,6 +9,7 @@
 - docker-buildx
 - rsync
 - ssh
+- nmap
 
 ## Installation
 
