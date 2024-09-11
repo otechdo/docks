@@ -1,0 +1,11 @@
+services:
+  teams:
+    image: otechdo/teams
+    restart: always
+    ports:
+      - "8080:3000"
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8040:8080"

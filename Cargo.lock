@@ -122,10 +122,11 @@ dependencies = [
 
 [[package]]
 name = "docks"
-version = "1.1.0"
+version = "2.0.0"
 dependencies = [
  "chrono",
  "inquire",
+ "is_executable",
  "log",
  "toml",
 ]
@@ -222,6 +223,15 @@ dependencies = [
  "once_cell",
  "unicode-segmentation",
  "unicode-width",
+]
+
+[[package]]
+name = "is_executable"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ba3d8548b8b04dafdf2f4cc6f5e379db766d0a6d9aac233ad4c9a92ea892233"
+dependencies = [
+ "winapi",
 ]
 
 [[package]]

@@ -10,6 +10,7 @@
 - rsync
 - ssh
 - nmap
+- ranger
 
 ## Installation
 
@@ -23,7 +24,7 @@ cargo install docks
 cargo uninstall docks
 ```
 
-## Usage 
+## Usage
 
 ```bash
 docks
@@ -53,28 +54,14 @@ services:
 ## The config
 
 ```toml
-# docks.toml
+[local]
+containers = ["adminer", "teams"]
 
-[lab] # The server id
-username = "root" # The server connection username
-ip = "lab.ji" # The server ip address
-services = ["picsou"] # All services to deploy on the server  
-```
-
-## A config example
-
-```toml
-# docks.toml
-
-[homelab] # The server id
-username = "root" # The server connection username
-ip = "home.lan" # The server ip address
-services = ["nextcloud", "adminer"] # All services to deploy on the server
-
-[lab] # The server id
-username = "git" # The server connection username
-ip = "git.otechdo.org" # The server ip address
-services = ["gitlab"] # All services to deploy on the server  
+[lab]
+username = "root"
+ip = "lab.ji"
+port = "22"
+containers = ["gitlab"]
 ```
 
 ## Min structure
@@ -90,3 +77,4 @@ services
 
 4 directories, 3 files
 ```
+

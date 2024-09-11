@@ -1,5 +1,8 @@
+[local]
+containers = ["teams"]
+
 [lab]
 username = "root"
 ip = "lab.ji"
 port = "22"
-containers = ["picsou"]
+containers = ["teams"]
