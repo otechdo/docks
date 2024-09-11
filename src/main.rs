@@ -1,6 +1,7 @@
 use chrono::Local;
 use inquire::{Select, Text};
-use std::path::Path;
+use std::env::current_dir;
+use std::path::{Path, MAIN_SEPARATOR_STR};
 use std::process::{ExitStatus, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -15,8 +16,6 @@ fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
     if let Ok(mut child) = Command::new("docker")
         .arg(verb)
         .args(args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
         .current_dir(path)
         .spawn()
     {
@@ -294,11 +293,28 @@ fn dock_running() -> Result<(), Error> {
     Ok(())
 }
 fn main() {
+    assert!(clear().is_ok());
     loop {
+        let project = current_dir().map_or_else(
+            |_| String::from("."),
+            |d| {
+                let parts = d
+                    .to_str()
+                    .unwrap()
+                    .split(MAIN_SEPARATOR_STR)
+                    .collect::<Vec<&str>>();
+                parts
+                    .last()
+                    .map_or_else(|| String::from("unknown"), |p| (*p).to_string())
+            },
+        );
         let tasks = vec![
             "build", "clear", "check", "deploy", "exit", "login", "logout", "push", "ssh",
         ];
-        let selected = Select::new("what do want to do :", tasks)
+        let selected = Select::new(
+            format!("\x1b[1;34mWhat you want to do in the \x1b[1;36m{project}\x1b[1;34m project :\x1b[0m").as_str(),
+            tasks,
+        )
             .prompt()
             .unwrap_or_default();
         match selected {
