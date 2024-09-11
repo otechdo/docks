@@ -23,6 +23,12 @@ cargo install docks
 cargo uninstall docks
 ```
 
+## Usage 
+
+```bash
+docks
+```
+
 # Structure
 
 ```text
@@ -83,40 +89,4 @@ services
     └── compose.yaml
 
 4 directories, 3 files
-```
-
-## Login
-
-```bash
-docks login # Login to docker hub
-```
-
-## Logout
-
-```bash
-docks logout # Logout to docker hub
-```
-
-## Running
-
-```bash
-docks running # List all running docker container in all servers
-```
-
-## Deploy
-
-```bash
-docks deploy # Send all services in the dedicated servers
-```
-
-## Build
-
-```bash
-docks build <tag> # Create the image form the Dockerfile on the current directory
-```
-
-## Build
-
-```bash
-docks push <images> # Push images on docker hub
 ```
