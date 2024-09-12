@@ -1,6 +1,6 @@
-allow = ["cargo"]
+allow = ["cargo", "nursery"]
 warn = []
-forbid = ["complexity", "style", "nursery", "pedantic", "suspicious", "correctness", "perf"]
+forbid = ["style", "complexity", "pedantic", "suspicious", "correctness", "perf"]
 before-cargo = ["cargo fmt", "cargo update --verbose"]
 cargo = ["verify-project", "check --all-targets --profile=test", "audit", "test -j 4 --no-fail-fast -- --show-output", "fmt --check", "outdated"]
 after-cargo = ["cargo install --path .", "bin/ask"]

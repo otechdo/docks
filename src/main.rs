@@ -2,24 +2,29 @@ use chrono::Local;
 use inquire::{Confirm, Select, Text};
 use is_executable::IsExecutable;
 use std::env::{current_dir, set_current_dir, var};
-use std::fs::create_dir_all;
+use std::fs::{create_dir_all, File};
+use std::io::Write;
 use std::path::{Path, MAIN_SEPARATOR_STR};
 use std::process::{ExitStatus, Stdio};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use std::{
     fs::read_to_string,
+    io,
     io::{Error, ErrorKind},
     process::Command,
 };
 use toml::Value;
-pub const TASKS: [&str; 27] = [
+pub const TASKS: [&str; 30] = [
+    "init",
     "build",
     "clear",
     "check",
     "cd",
+    "commit",
     "os",
     "deploy",
+    "enter",
     "exit",
     "edit",
     "editor",
@@ -42,24 +47,6 @@ pub const TASKS: [&str; 27] = [
     "touch",
     "ps",
 ];
-fn screen(verb: &str, args: &[&str]) -> Result<(), Error> {
-    if let Ok(dir) = var("DOCK_WORKING_DIR") {
-        if let Ok(mut child) = Command::new("screen")
-            .arg(verb)
-            .args(args)
-            .current_dir(dir.as_str())
-            .spawn()
-        {
-            assert!(child.wait().is_ok());
-            return Ok(());
-        }
-        return Err(Error::new(ErrorKind::NotFound, "screen not found"));
-    }
-    Err(Error::new(
-        ErrorKind::NotFound,
-        "DOCK_WORKING_DIR not found",
-    ))
-}
 fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
     if let Ok(mut child) = Command::new("docker")
         .arg(verb)
@@ -80,7 +67,7 @@ fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
     Err(Error::new(ErrorKind::NotFound, "docker not found"))
 }
 
-fn mkdir() -> std::io::Result<()> {
+fn mkdir() -> io::Result<()> {
     let path = Text::new("please enter the new directory name to create :")
         .prompt()
         .unwrap();
@@ -90,21 +77,33 @@ fn mkdir() -> std::io::Result<()> {
     create_dir_all(path.as_str())
 }
 fn dirs() -> Vec<String> {
-    let mut dirs: Vec<String> = Vec::new();
-    dirs.push(String::from(".."));
-    let walk = ignore::WalkBuilder::new(".")
-        .standard_filters(true)
-        .threads(4)
-        .add_custom_ignore_filename("ignore.ji")
-        .filter_entry(move |e| e.path().is_dir())
-        .hidden(false)
-        .build();
-    for entry in walk.flatten() {
-        if entry.file_type().unwrap().is_dir() {
-            dirs.push(entry.path().to_str().unwrap().to_string());
+    if let Ok(working_dir) = var("DOCKS_WORKING_DIR") {
+        if let Ok(public) = var("DOCKS_PUBLIC_DIR") {
+            let mut dirs: Vec<String> = Vec::from([working_dir.to_string(), public]);
+            let walk = ignore::WalkBuilder::new(working_dir.as_str())
+                .standard_filters(true)
+                .threads(4)
+                .add_custom_ignore_filename("ignore.ji")
+                .filter_entry(move |e| e.path().is_dir())
+                .hidden(false)
+                .build();
+            for entry in walk.flatten() {
+                let p = entry.path();
+                if entry.file_type().unwrap().is_dir() {
+                    if let Some(directory) = p.to_str() {
+                        if directory.contains(".git").eq(&false)
+                            && dirs.contains(&directory.to_string()).eq(&false)
+                        {
+                            dirs.push(String::from(directory));
+                        }
+                    }
+                }
+            }
+            return dirs;
         }
+        return Vec::new();
     }
-    dirs
+    Vec::new()
 }
 
 fn jump() {
@@ -124,7 +123,7 @@ fn jump() {
         break;
     }
 }
-fn cd(dir: &str) -> std::io::Result<()> {
+fn cd(dir: &str) -> io::Result<()> {
     set_current_dir(dir)
 }
 fn ssh_run(args: &[&str], user: &str, ip: &str) -> Result<(), Error> {
@@ -591,7 +590,7 @@ fn restart() -> Result<(), Error> {
 fn edit() -> Result<(), Error> {
     let filename = Select::new(
         "Select a filename to edit",
-        vec!["compose.yaml", "Dockerfile"],
+        vec!["docks.toml", "compose.yaml", "Dockerfile"],
     )
     .prompt()
     .unwrap();
@@ -705,6 +704,7 @@ fn main() {
                 .prompt()
                 .unwrap_or_default();
             match selected {
+                "init" => assert!(init().is_ok()),
                 "login" => assert!(login().is_ok()),
                 "logout" => assert!(logout().is_ok()),
                 "clear" => assert!(clear().is_ok()),
@@ -712,11 +712,12 @@ fn main() {
                 "check" => assert!(dock_running().is_ok()),
                 "cd" => jump(),
                 "edit" => assert!(edit().is_ok()),
-                "run" => run(),
+                "enter" => enter(),
                 "ssh" => assert!(ssh().is_ok()),
                 "stop" => assert!(stop().is_ok()),
                 "mkdir" => assert!(mkdir().is_ok()),
                 "logs" => logs(),
+                "commit" => assert!(commit().is_ok()),
                 "show containers" => assert!(list_container().is_ok()),
                 "show volumes" => assert!(list_volumes().is_ok()),
                 "show networks" => assert!(list_networks().is_ok()),
@@ -741,11 +742,28 @@ fn main() {
     println!("Bye");
 }
 
-fn run() {
-    let image = Text::new("please enter the image to run :")
+fn init() -> io::Result<()> {
+    let mut f = File::create("docks.toml")?;
+    writeln!(f, "[local]\ncontainers = []\n\n[lab]\nusername = \"root\"\nip = \"lab.ji\"\nport = \"22\"\ncontainers = []\n")
+}
+
+fn enter() {
+    assert!(list_container().is_ok());
+    let image = Text::new("please enter the image to enter :")
         .prompt()
         .unwrap();
     let _ = docker("run", &["-i", "-t", image.as_str()], "/tmp");
+}
+
+fn commit() -> Result<(), Error> {
+    assert!(list_container().is_ok());
+    let id = Text::new("please enter the id of the container to commit :")
+        .prompt()
+        .unwrap();
+    let image = Text::new("please enter the name of the new image :")
+        .prompt()
+        .unwrap();
+    docker("commit", &[id.as_str(), image.as_str()], "/tmp")
 }
 
 fn os() {
