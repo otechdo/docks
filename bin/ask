@@ -1,0 +1,26 @@
+#!/bin/bash
+
+function ask() {
+  echo -e -n "\033[1;32m      $1\033[0m yes or no ? "
+  read -r choix
+  case "$choix" in
+      no)
+      ;;
+      yes)
+            $2
+      ;;
+      *)
+          ask "$1" "$2"
+      ;;
+  esac
+}
+
+
+function commit() {
+    lazygit    || exit 1
+}
+function main() {
+    ask "Commit" commit
+}
+
+main
