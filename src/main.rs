@@ -616,8 +616,8 @@ fn main() {
                 },
             );
             let tasks = vec![
-                "build", "clear", "check", "cd", "deploy", "exit", "editor", "list", "login",
-                "logout", "push", "pull", "ps", "m", "start", "restart", "stop", "ssh", "touch",
+                "build", "clear", "check", "cd", "deploy", "exit", "editor", "ls", "list", "login",
+                "logout", "push", "pull", "ps", "rm", "start", "restart", "stop", "ssh", "touch",
                 "ps",
             ];
 
@@ -638,6 +638,7 @@ fn main() {
                 "stop" => assert!(stop().is_ok()),
                 "logs" => logs(),
                 "list" => list(),
+                "ls" => ls(),
                 "start" => assert!(start().is_ok()),
                 "restart" => assert!(restart().is_ok()),
                 "rm" => assert!(remove().is_ok()),
@@ -665,6 +666,20 @@ fn main() {
         println!("Ranger not found");
     }
     println!("Bye");
+}
+
+fn ls() {
+    if let Ok(mut child) = Command::new("eza")
+        .arg("--git")
+        .arg("--gitignore")
+        .arg("--tree")
+        .arg("--level")
+        .arg("4")
+        .current_dir(".")
+        .spawn()
+    {
+        assert!(child.wait().is_ok());
+    }
 }
 
 fn logs() {
