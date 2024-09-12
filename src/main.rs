@@ -459,7 +459,7 @@ fn start() -> Result<(), Error> {
 fn restart() -> Result<(), Error> {
     loop {
         assert!(clear().is_ok());
-        assert!(list_images().is_ok());
+        assert!(ps().is_ok());
         let image = Text::new("please enter the name or the id of the image to restart : ")
             .prompt()
             .unwrap();
