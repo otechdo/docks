@@ -15,7 +15,7 @@ use std::{
     process::Command,
 };
 use toml::Value;
-pub const TASKS: [&str; 30] = [
+pub const TASKS: [&str; 31] = [
     "init",
     "build",
     "clear",
@@ -34,6 +34,7 @@ pub const TASKS: [&str; 30] = [
     "show networks",
     "login",
     "mkdir",
+    "make repositories",
     "logout",
     "push",
     "pull",
@@ -74,7 +75,14 @@ fn mkdir() -> io::Result<()> {
     if Path::new(path.as_str()).is_dir() {
         return Ok(());
     }
-    create_dir_all(path.as_str())
+    if create_dir_all(path.as_str()).is_ok() {
+        log(format!("Successfully created directory: {path}").as_str());
+        return Ok(());
+    }
+    Err(Error::new(
+        ErrorKind::InvalidInput,
+        "Cannot create directory",
+    ))
 }
 fn dirs() -> Vec<String> {
     if let Ok(working_dir) = var("DOCKS_WORKING_DIR") {
@@ -112,6 +120,7 @@ fn jump() {
             .prompt()
             .unwrap();
         assert!(cd(jump.as_str()).is_ok());
+        log(format!("{jump} is the current dir").as_str());
         if Confirm::new("jump on an another directory ? ")
             .with_default(false)
             .prompt()
@@ -497,6 +506,7 @@ fn stop() -> Result<(), Error> {
             .prompt()
             .unwrap_or_default();
         if docker("stop", &[image.as_str()], "/tmp").is_ok() {
+            log(format!("The container {image} has been stopped successfully").as_str());
             if Confirm::new("stop an other container ? :")
                 .with_default(false)
                 .prompt()
@@ -539,6 +549,10 @@ fn start() -> Result<(), Error> {
         )
         .is_ok()
         {
+            log(
+                format!("The container {image} has been started in the foreground successfully")
+                    .as_str(),
+            );
             assert!(list_container().is_ok());
             if Confirm::new("run an other container ? :")
                 .with_default(false)
@@ -658,6 +672,8 @@ fn pull() {
         )
         .is_ok()
         {
+            log(format!("The container {image} has been updated successfully").as_str());
+
             assert!(ps().is_ok());
             if Confirm::new("pull an other image ? :")
                 .with_default(false)
@@ -717,6 +733,7 @@ fn main() {
                 "stop" => assert!(stop().is_ok()),
                 "mkdir" => assert!(mkdir().is_ok()),
                 "logs" => logs(),
+                "make repositories" => make(),
                 "commit" => assert!(commit().is_ok()),
                 "show containers" => assert!(list_container().is_ok()),
                 "show volumes" => assert!(list_volumes().is_ok()),
@@ -737,9 +754,9 @@ fn main() {
             }
         }
     } else {
-        println!("Ranger not found");
+        log("$DOCKS_WORKING_DIR not founded");
     }
-    println!("Bye");
+    log("Bye");
 }
 
 fn init() -> io::Result<()> {
@@ -763,9 +780,61 @@ fn commit() -> Result<(), Error> {
     let image = Text::new("please enter the name of the new image :")
         .prompt()
         .unwrap();
-    docker("commit", &[id.as_str(), image.as_str()], "/tmp")
+    if docker("commit", &[id.as_str(), image.as_str()], "/tmp").is_ok() {
+        log(format!("The image {image} has been created").as_str());
+        return Ok(());
+    }
+    Err(Error::new(
+        ErrorKind::InvalidInput,
+        "Failed to commit image",
+    ))
 }
-
+fn make() {
+    if let Ok(docks) = configuration() {
+        if let Some(repositories) = docks.get("repositories") {
+            if let Some(repos) = repositories.as_table() {
+                if let Some(i) = repos.get("images") {
+                    if let Some(images) = i.as_array() {
+                        for image in images {
+                            if let Some(x) = image.as_array() {
+                                if let Some(name) = x.first() {
+                                    if let Some(tag) = x.get(1) {
+                                        if let Some(tags) = tag.as_array() {
+                                            for tag in tags {
+                                                if let Some(tag_name) = tag.as_str() {
+                                                    if let Some(user) = repositories.get("username")
+                                                    {
+                                                        if let Ok(public) = var("DOCKS_PUBLIC_DIR")
+                                                        {
+                                                            if let Some(username) = user.as_str() {
+                                                                if let Some(img) = name.as_str() {
+                                                                    assert!(docker("buildx", &["build", "-t", format!("{username}/{img}:{tag_name}").as_str(), format!("{public}/{img}/{tag_name}").as_str()], ".").is_ok());
+                                                                    assert!(docker(
+                                                                        "push",
+                                                                        &[format!(
+                                                                            "{username}/{img}:{tag_name}"
+                                                                        )
+                                                                            .as_str()],
+                                                                        "."
+                                                                    )
+                                                                        .is_ok());
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 fn os() {
     loop {
         let image = Select::new(
@@ -799,6 +868,7 @@ fn os() {
             .prompt()
             .unwrap();
         assert!(docker("pull", &[format!("{image}:{tag}").as_str()], "/tmp").is_ok());
+        log(format!("{image}:{tag} has been downloaded successfully").as_str());
         if Confirm::new("download an other operating system ?")
             .with_default(false)
             .prompt()

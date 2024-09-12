@@ -1,6 +1,14 @@
 [local]
 containers = ["teams"]
 
+[repositories]
+username = "otechdo"
+images = [
+    ["rlang", ["stable", "beta", "nightly"]],
+    ["zuu", ["stable", "beta", "nightly"]],
+    ["teams", ["stable", "beta", "nightly"]],
+    ["picsou", ["stable", "beta", "nightly"]],
+]
 [lab]
 username = "root"
 ip = "lab.ji"
