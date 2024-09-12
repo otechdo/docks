@@ -16,10 +16,15 @@ function ask() {
 }
 
 function commit() {
-    lazygit    || exit 1
+    lazygit || exit 1
+}
+
+function publish() {
+  cargo publish || exit 1
 }
 function main() {
     ask "Commit" commit
+    ask "Publish" publish
 }
 
 main
