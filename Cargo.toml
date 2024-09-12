@@ -1,6 +1,6 @@
 [package]
 name = "docks"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 description = "A docker compose uploading tool"
 categories = ["command-line-utilities"]
@@ -16,3 +16,4 @@ inquire = { version = "0.7.5", features = ["chrono", "console"] }
 toml = "0.8.19"
 log = "0.4.22"
 is_executable = "1.0.3"
+ignore = "0.4.23"

@@ -1,7 +1,7 @@
 use chrono::Local;
 use inquire::{Confirm, Select, Text};
 use is_executable::IsExecutable;
-use std::env::current_dir;
+use std::env::{current_dir, set_current_dir};
 use std::path::{Path, MAIN_SEPARATOR_STR};
 use std::process::{ExitStatus, Stdio};
 use std::thread::sleep;
@@ -31,6 +31,44 @@ fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
         }
     }
     Err(Error::new(ErrorKind::NotFound, "docker not found"))
+}
+
+fn dirs() -> Vec<String> {
+    let mut dirs: Vec<String> = Vec::new();
+    let walk = ignore::WalkBuilder::new(".")
+        .standard_filters(true)
+        .threads(4)
+        .add_custom_ignore_filename("ignore.ji")
+        .filter_entry(move |e| e.path().is_dir())
+        .hidden(false)
+        .build();
+    for entry in walk.flatten() {
+        if entry.file_type().unwrap().is_dir() {
+            dirs.push(entry.path().to_str().unwrap().to_string());
+        }
+    }
+    dirs
+}
+
+fn jump() {
+    loop {
+        let jump = Select::new("Select a folder for jump : ", dirs())
+            .prompt()
+            .unwrap();
+        assert!(cd(jump.as_str()).is_ok());
+        if Confirm::new("jump on an another directory ? ")
+            .with_default(false)
+            .prompt()
+            .unwrap()
+            .eq(&true)
+        {
+            continue;
+        }
+        break;
+    }
+}
+fn cd(dir: &str) -> std::io::Result<()> {
+    set_current_dir(dir)
 }
 fn ssh_run(args: &[&str], user: &str, ip: &str) -> Result<(), Error> {
     if let Ok(mut cmd) = Command::new("ssh")
@@ -578,8 +616,9 @@ fn main() {
                 },
             );
             let tasks = vec![
-                "build", "clear", "check", "deploy", "exit", "editor", "list", "login", "logout",
-                "push", "pull", "ps", "m", "start", "restart", "stop", "ssh", "touch", "ps",
+                "build", "clear", "check", "cd", "deploy", "exit", "editor", "list", "login",
+                "logout", "push", "pull", "ps", "m", "start", "restart", "stop", "ssh", "touch",
+                "ps",
             ];
 
             let selected = Select::new(
@@ -594,6 +633,7 @@ fn main() {
                 "clear" => assert!(clear().is_ok()),
                 "deploy" => deploy(),
                 "check" => assert!(dock_running().is_ok()),
+                "cd" => jump(),
                 "ssh" => assert!(ssh().is_ok()),
                 "stop" => assert!(stop().is_ok()),
                 "logs" => logs(),
