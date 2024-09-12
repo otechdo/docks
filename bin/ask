@@ -19,12 +19,18 @@ function commit() {
     lazygit || exit 1
 }
 
+function execute() {
+    docks || exit 1
+}
+
 function publish() {
   cargo publish || exit 1
 }
 function main() {
+    ask "     Execute" execute
     ask "      Commit" commit
     ask "     Publish" publish
+
 }
 
 main

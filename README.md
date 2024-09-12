@@ -11,6 +11,26 @@
 - ssh
 - nmap
 - ranger
+- eza
+- vim
+- screen
+
+## Environment
+
+### Fish
+
+```shell
+set -x DOCKS_WORKING_DIR "$HOME/Docks"
+set -x DOCKS_PUBLIC_DIR "$HOME/Docks/Public"
+```
+
+### Bash
+
+```bash
+export DOCKS_WORKING_DIR="$HOME/Docks"
+export DOCKS_PUBLIC_DIR="$HOME/Docks/Public"
+
+```
 
 ## Installation
 

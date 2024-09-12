@@ -1,7 +1,8 @@
 use chrono::Local;
 use inquire::{Confirm, Select, Text};
 use is_executable::IsExecutable;
-use std::env::{current_dir, set_current_dir};
+use std::env::{current_dir, set_current_dir, var};
+use std::fs::create_dir_all;
 use std::path::{Path, MAIN_SEPARATOR_STR};
 use std::process::{ExitStatus, Stdio};
 use std::thread::sleep;
@@ -12,7 +13,53 @@ use std::{
     process::Command,
 };
 use toml::Value;
-
+pub const TASKS: [&str; 27] = [
+    "build",
+    "clear",
+    "check",
+    "cd",
+    "os",
+    "deploy",
+    "exit",
+    "edit",
+    "editor",
+    "ls",
+    "show containers",
+    "show volumes",
+    "show networks",
+    "login",
+    "mkdir",
+    "logout",
+    "push",
+    "pull",
+    "ps",
+    "run",
+    "rm",
+    "start",
+    "restart",
+    "stop",
+    "ssh",
+    "touch",
+    "ps",
+];
+fn screen(verb: &str, args: &[&str]) -> Result<(), Error> {
+    if let Ok(dir) = var("DOCK_WORKING_DIR") {
+        if let Ok(mut child) = Command::new("screen")
+            .arg(verb)
+            .args(args)
+            .current_dir(dir.as_str())
+            .spawn()
+        {
+            assert!(child.wait().is_ok());
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::NotFound, "screen not found"));
+    }
+    Err(Error::new(
+        ErrorKind::NotFound,
+        "DOCK_WORKING_DIR not found",
+    ))
+}
 fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
     if let Ok(mut child) = Command::new("docker")
         .arg(verb)
@@ -33,8 +80,18 @@ fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
     Err(Error::new(ErrorKind::NotFound, "docker not found"))
 }
 
+fn mkdir() -> std::io::Result<()> {
+    let path = Text::new("please enter the new directory name to create :")
+        .prompt()
+        .unwrap();
+    if Path::new(path.as_str()).is_dir() {
+        return Ok(());
+    }
+    create_dir_all(path.as_str())
+}
 fn dirs() -> Vec<String> {
     let mut dirs: Vec<String> = Vec::new();
+    dirs.push(String::from(".."));
     let walk = ignore::WalkBuilder::new(".")
         .standard_filters(true)
         .threads(4)
@@ -215,15 +272,27 @@ fn ps() -> Result<(), Error> {
     docker("ps", &["-a"], "/tmp")
 }
 
-fn build(tag: &str) -> Result<(), Error> {
+fn build() -> Result<(), Error> {
+    let tag = Text::new("Please enter the tag for the image :")
+        .prompt()
+        .unwrap_or_default();
     if Path::new("Dockerfile").is_file() {
-        return docker("buildx", &["build", "-t", tag, "."], ".");
+        return docker("buildx", &["build", "-t", tag.as_str(), "."], ".");
     }
     Err(Error::new(ErrorKind::NotFound, "Dockerfile not found"))
 }
-fn publish(container: &str) -> Result<(), Error> {
-    docker("push", &[container], "/tmp")
+fn publish() -> Result<(), Error> {
+    assert!(list_images().is_ok());
+    let image = Text::new("Please enter the image to publish :")
+        .prompt()
+        .unwrap_or_default();
+    docker("push", &[image.as_str()], "/tmp")
 }
+
+fn list_container() -> Result<(), Error> {
+    docker("container", &["ls"], "/tmp")
+}
+
 fn deploy_local() -> Result<(), Error> {
     if let Ok(docks) = configuration() {
         if let Some(table) = docks.as_table() {
@@ -245,7 +314,8 @@ fn deploy_local() -> Result<(), Error> {
                             "fail to update container"
                         );
                         assert!(
-                            docker("compose", &["up", "-d"], x.as_str()).is_ok(),
+                            docker("compose", &["up", "--remove-orphans", "-d"], x.as_str())
+                                .is_ok(),
                             "fail to start container"
                         );
                     } else {
@@ -335,6 +405,7 @@ fn deploy_to_remote() -> Result<(), Error> {
                                         "compose",
                                         "--project-directory",
                                         image,
+                                        "--remove-orphans",
                                         "up",
                                         "-d",
                                     ],
@@ -368,7 +439,7 @@ fn deploy() {
 }
 
 fn editor() -> Result<(), Error> {
-    if let Ok(mut child) = Command::new("ranger").current_dir(".").spawn() {
+    if let Ok(mut child) = Command::new("ranger").arg(".").spawn() {
         assert!(child.wait().is_ok());
         return Ok(());
     }
@@ -397,12 +468,6 @@ fn dock_running() -> Result<(), Error> {
     Ok(())
 }
 
-fn list() {
-    assert!(list_images().is_ok());
-    assert!(list_networks().is_ok());
-    assert!(list_volumes().is_ok());
-}
-
 fn remove() -> Result<(), Error> {
     loop {
         assert!(clear().is_ok());
@@ -410,7 +475,7 @@ fn remove() -> Result<(), Error> {
         let image = Text::new("please enter the name or the id of the image to remove : ")
             .prompt()
             .unwrap_or_default();
-        if docker("image", &["rm", image.as_str()], "/tmp").is_ok() {
+        if docker("image", &["rm", "-f", image.as_str()], "/tmp").is_ok() {
             if Confirm::new("remove an other image ? :")
                 .with_default(false)
                 .prompt()
@@ -428,7 +493,7 @@ fn remove() -> Result<(), Error> {
 fn stop() -> Result<(), Error> {
     loop {
         assert!(clear().is_ok());
-        assert!(ps().is_ok());
+        assert!(list_container().is_ok());
         let image = Text::new("please enter the name or the id of the container to stop : ")
             .prompt()
             .unwrap_or_default();
@@ -453,7 +518,7 @@ fn stop() -> Result<(), Error> {
 fn start() -> Result<(), Error> {
     loop {
         assert!(clear().is_ok());
-        assert!(list_images().is_ok());
+        assert!(list_container().is_ok());
         let image = Text::new("please enter the name or the id of the image to run : ")
             .prompt()
             .unwrap();
@@ -475,7 +540,7 @@ fn start() -> Result<(), Error> {
         )
         .is_ok()
         {
-            assert!(ps().is_ok());
+            assert!(list_container().is_ok());
             if Confirm::new("run an other container ? :")
                 .with_default(false)
                 .prompt()
@@ -497,13 +562,14 @@ fn start() -> Result<(), Error> {
 fn restart() -> Result<(), Error> {
     loop {
         assert!(clear().is_ok());
-        assert!(ps().is_ok());
+        assert!(list_container().is_ok());
         let image = Text::new("please enter the name or the id of the image to restart : ")
             .prompt()
             .unwrap();
 
         if docker("restart", &[image.as_str()], "/tmp").is_ok() {
-            assert!(ps().is_ok());
+            log(format!("The container {image} has been restarted successfully").as_str());
+            assert!(list_container().is_ok());
             if Confirm::new("restart an other container ? :")
                 .with_default(false)
                 .prompt()
@@ -522,6 +588,21 @@ fn restart() -> Result<(), Error> {
     Ok(())
 }
 
+fn edit() -> Result<(), Error> {
+    let filename = Select::new(
+        "Select a filename to edit",
+        vec!["compose.yaml", "Dockerfile"],
+    )
+    .prompt()
+    .unwrap();
+    if let Ok(mut child) = Command::new("vim").arg(filename).current_dir(".").spawn() {
+        if child.wait().is_ok() {
+            return Ok(());
+        }
+        return Err(Error::new(ErrorKind::NotFound, "Failed to edit filename"));
+    }
+    Err(Error::new(ErrorKind::NotFound, "vim not found"))
+}
 fn touch() -> Result<(), Error> {
     if Confirm::new("create a Dockerfile")
         .with_default(false)
@@ -600,7 +681,9 @@ fn list_images() -> Result<(), Error> {
 }
 fn main() {
     assert!(clear().is_ok());
-    if Path::new("/usr/bin/ranger").is_executable() {
+    assert!(Path::new("/usr/bin/ranger").is_executable());
+    if let Ok(dir) = var("DOCKS_WORKING_DIR") {
+        assert!(set_current_dir(dir).is_ok());
         loop {
             let project = current_dir().map_or_else(
                 |_| String::from("."),
@@ -615,15 +698,9 @@ fn main() {
                         .map_or_else(|| String::from("unknown"), |p| (*p).to_string())
                 },
             );
-            let tasks = vec![
-                "build", "clear", "check", "cd", "deploy", "exit", "editor", "ls", "list", "login",
-                "logout", "push", "pull", "ps", "rm", "start", "restart", "stop", "ssh", "touch",
-                "ps",
-            ];
-
             let selected = Select::new(
                 format!("\x1b[1;34mWhat you want to do in the \x1b[1;36m{project}\x1b[1;34m project :\x1b[0m").as_str(),
-                tasks,
+                TASKS.to_vec(),
             )
                 .prompt()
                 .unwrap_or_default();
@@ -634,29 +711,25 @@ fn main() {
                 "deploy" => deploy(),
                 "check" => assert!(dock_running().is_ok()),
                 "cd" => jump(),
+                "edit" => assert!(edit().is_ok()),
+                "run" => run(),
                 "ssh" => assert!(ssh().is_ok()),
                 "stop" => assert!(stop().is_ok()),
+                "mkdir" => assert!(mkdir().is_ok()),
                 "logs" => logs(),
-                "list" => list(),
+                "show containers" => assert!(list_container().is_ok()),
+                "show volumes" => assert!(list_volumes().is_ok()),
+                "show networks" => assert!(list_networks().is_ok()),
                 "ls" => ls(),
+                "os" => os(),
                 "start" => assert!(start().is_ok()),
                 "restart" => assert!(restart().is_ok()),
                 "rm" => assert!(remove().is_ok()),
                 "touch" => assert!(touch().is_ok()),
                 "ps" => assert!(ps().is_ok()),
                 "pull" => pull(),
-                "build" => {
-                    let tag = Text::new("Please enter the tag for the image :")
-                        .prompt()
-                        .unwrap_or_default();
-                    assert!(build(tag.as_str()).is_ok());
-                }
-                "push" => {
-                    let image = Text::new("Please enter the image to publish :")
-                        .prompt()
-                        .unwrap_or_default();
-                    assert!(publish(image.as_str()).is_ok());
-                }
+                "build" => assert!(build().is_ok()),
+                "push" => assert!(publish().is_ok()),
                 "editor" => assert!(editor().is_ok()),
                 "exit" => break,
                 _ => continue,
@@ -668,13 +741,67 @@ fn main() {
     println!("Bye");
 }
 
+fn run() {
+    let image = Text::new("please enter the image to run :")
+        .prompt()
+        .unwrap();
+    let _ = docker("run", &["-i", "-t", image.as_str()], "/tmp");
+}
+
+fn os() {
+    loop {
+        let image = Select::new(
+            "please enter the os to download :",
+            vec![
+                "ubuntu",
+                "kalilinux/kali-rolling",
+                "kalilinux/kali-last-release",
+                "kalilinux/kali-dev",
+                "kalilinux/kali-experimental",
+                "kalilinux/kali-bleeding-edge",
+                "archlinux",
+                "debian",
+                "amazonlinux",
+                "oraclelinux",
+                "fedora",
+                "kali",
+                "centos",
+                "mageia",
+            ],
+        )
+        .prompt()
+        .unwrap();
+        let tag = Text::new("Please enter the tag for the image :")
+            .with_default("latest")
+            .prompt()
+            .unwrap();
+        assert!(docker("pull", &[format!("{image}:{tag}").as_str()], "/tmp").is_ok());
+        if Confirm::new("download an other operating system ?")
+            .with_default(false)
+            .prompt()
+            .unwrap()
+            .eq(&true)
+        {
+            continue;
+        }
+        break;
+    }
+}
 fn ls() {
     if let Ok(mut child) = Command::new("eza")
         .arg("--git")
-        .arg("--gitignore")
+        .arg("--git-ignore")
         .arg("--tree")
         .arg("--level")
-        .arg("4")
+        .arg("7")
+        .arg("--group-directories-first")
+        .arg("--color")
+        .arg("always")
+        .arg("--icons")
+        .arg("always")
+        .arg("-l")
+        .arg("-g")
+        .arg("--total-size")
         .current_dir(".")
         .spawn()
     {
@@ -689,7 +816,6 @@ fn logs() {
         let image = Text::new("please enter the name or the id of the image to show logs : ")
             .prompt()
             .unwrap();
-
         if docker("logs", &[image.as_str()], "/tmp").is_ok() {
             assert!(ps().is_ok());
             if Confirm::new("show logs of another image ? :")

@@ -9,3 +9,8 @@ services:
     restart: always
     ports:
       - "8040:8080"
+  gogs:
+    image: gogs/gogs
+    restart: always
+    ports:
+      - "8000:3000"
