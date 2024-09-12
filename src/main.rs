@@ -772,6 +772,11 @@ fn os() {
             "please enter the os to download :",
             vec![
                 "ubuntu",
+                "alpine",
+                "photon",
+                "clearlinux",
+                "almalinux",
+                "rockylinux",
                 "kalilinux/kali-rolling",
                 "kalilinux/kali-last-release",
                 "kalilinux/kali-dev",
