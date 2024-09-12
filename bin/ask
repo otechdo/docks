@@ -15,7 +15,6 @@ function ask() {
   esac
 }
 
-
 function commit() {
     lazygit    || exit 1
 }
