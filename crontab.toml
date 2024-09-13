@@ -1,0 +1,32 @@
+[notifications]
+enabled = true
+
+[notifications.email]
+smtp_server = "${SMTP_SERVER}"
+smtp_port = 587
+smtp_username = "${SMTP_USERNAME}"
+smtp_password = "${SMTP_PASSWORD}"
+from_address = "${SMTP_FROM}"
+tls = false
+ssl = false
+
+[email]
+templates = ["simply", "minimal", "detailed", "beautiful"]
+default = "simply"
+
+[cron]
+[[cron.jobs]]
+name = "tache_cron_1"
+schedule = "0 * * * *"
+command = "echo 'Bonjour le monde !'"
+log = "/var/log/docks/tache_cron_1.log"
+retries = 3
+retry_delay = 60
+on_success = [
+    ["badge", { label = "Tâche cron 1", message = "Success", color = "green", save_at = "" }],
+    ["notify", { type = "email", to = ["admin@otechdo.com"], cc = ["otechdo@otechdo.com"], from = "${SMTP_FROM}", attachment = [""] }]
+]
+on_failure = [
+    ["badge", { label = "Tâche cron 1", message = "Échec", color = "red", save_at = "" }],
+    ["notify", { type = "email", template = "detailed", to = ["admin@otechdo.com"], cc = ["otechdo@otechdo.com"], attachment = ["/var/log/docks/tache_cron_1.log"] }]
+]

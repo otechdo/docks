@@ -1,0 +1,33 @@
+[registry]
+url = ""
+username = ""
+password = ""
+
+[hub]
+username = "otechdo"
+email = "otechdo@otechdo.com"
+tags = [
+    ["version", ["stable", "beta", "nightly", "latest"]],
+    ["env", ["staging", "dev", "prod"]],
+    ["schedule", ["hourly", "daily", "weekly", "monthly"]],
+]
+
+[[hub.images]]
+name = "rlang"
+tags = ["version", "schedule"]
+path = "./rlang"
+
+[[hub.images]]
+name = "zuu"
+tags = ["version", "schedule", "env"]
+path = "./zuu"
+
+[[hub.images]]
+name = "teams"
+tags = ["version", "schedule", "env"]
+path = "./teams"
+
+[[hub.images]]
+name = "picsou"
+tags = ["version", "schedule", "env"]
+path = "./picsou"

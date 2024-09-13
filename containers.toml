@@ -1,0 +1,19 @@
+[zuu]
+image = "otechdo/zuu:stable"
+ports = ["8080:3000"]
+environment = { }
+volumes = []
+restart = "always"
+networks = ["backend", "frontend"]
+
+[teams]
+image = "otechdo/teams:stable"
+ports = ["8000:3000"]
+environment = { }
+volumes = []
+restart = "always"
+networks = ["backend", "frontend"]
+
+[networks]
+backend = { driver = "bridge", attachable = true, ipam = { driver = "default", subnet = "172.20.0.0/16", gateway = "172.20.0.1", reservations = [{ ip = "172.20.0.5", name = "zuu" }, { ip = "172.20.0.6", name = "teams" }] } }
+frontend = { driver = "bridge", attachable = true, ipam = { driver = "default", subnet = "172.21.0.0/16", gateway = "172.21.0.1" } }

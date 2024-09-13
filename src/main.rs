@@ -1,6 +1,7 @@
 use chrono::Local;
 use inquire::{Confirm, Select, Text};
 use is_executable::IsExecutable;
+use std::collections::HashMap;
 use std::env::{current_dir, set_current_dir, var};
 use std::fs::{create_dir_all, File};
 use std::io::Write;
@@ -15,7 +16,7 @@ use std::{
     process::Command,
 };
 use toml::Value;
-pub const TASKS: [&str; 31] = [
+pub const TASKS: [&str; 30] = [
     "init",
     "build",
     "clear",
@@ -34,9 +35,8 @@ pub const TASKS: [&str; 31] = [
     "show networks",
     "login",
     "mkdir",
-    "make repositories",
+    "publish",
     "logout",
-    "push",
     "pull",
     "ps",
     "run",
@@ -48,6 +48,10 @@ pub const TASKS: [&str; 31] = [
     "touch",
     "ps",
 ];
+
+const LOG_WITHOUT_SPACE: &str = "";
+const LOG_WITH_SPACE: &str = " ";
+
 fn docker(verb: &str, args: &[&str], path: &str) -> Result<(), Error> {
     if let Ok(mut child) = Command::new("docker")
         .arg(verb)
@@ -76,7 +80,10 @@ fn mkdir() -> io::Result<()> {
         return Ok(());
     }
     if create_dir_all(path.as_str()).is_ok() {
-        log(format!("Successfully created directory: {path}").as_str());
+        log(
+            format!("Successfully created directory: {path}").as_str(),
+            LOG_WITHOUT_SPACE,
+        );
         return Ok(());
     }
     Err(Error::new(
@@ -101,6 +108,7 @@ fn dirs() -> Vec<String> {
                     if let Some(directory) = p.to_str() {
                         if directory.contains(".git").eq(&false)
                             && dirs.contains(&directory.to_string()).eq(&false)
+                            && Path::new(format!("{directory}/Dockerfile").as_str()).exists()
                         {
                             dirs.push(String::from(directory));
                         }
@@ -120,7 +128,10 @@ fn jump() {
             .prompt()
             .unwrap();
         assert!(cd(jump.as_str()).is_ok());
-        log(format!("{jump} is the current dir").as_str());
+        log(
+            format!("{jump} is the current dir").as_str(),
+            LOG_WITHOUT_SPACE,
+        );
         if Confirm::new("jump on an another directory ? ")
             .with_default(false)
             .prompt()
@@ -152,14 +163,22 @@ fn ssh_run(args: &[&str], user: &str, ip: &str) -> Result<(), Error> {
 fn list_networks() -> Result<(), Error> {
     docker("network", &["ls"], "/tmp")
 }
-fn upload_image(user: &str, ip: &str, s: &str, port: &str) -> Result<(), Error> {
+fn upload_image(user: &str, ip: &str, image: &str, port: &str) -> Result<(), Error> {
     if let Ok(mut cmd) = Command::new("rsync")
         .arg("-a")
         .arg("-z")
         .arg("-e")
         .arg(format!("ssh -p {port}").as_str())
-        .arg(format!("./containers/{s}/").as_str())
-        .arg(format!("{user}@{ip}:{s}").as_str())
+        .arg(
+            format!(
+                "{}/{image}/",
+                var("DOCKS_PUBLIC_DIR")
+                    .expect("missing DOCKS_PUBLIC_DIR")
+                    .as_str()
+            )
+                .as_str(),
+        )
+        .arg(format!("{user}@{ip}:{image}").as_str())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
@@ -185,7 +204,7 @@ fn login() -> Result<(), Error> {
         .prompt()
         .unwrap_or_default();
     if docker("login", &["-u", username.as_str()], "/tmp").is_ok() {
-        log(format!("Logged as {username}").as_str());
+        log(format!("Logged as {username}").as_str(), LOG_WITHOUT_SPACE);
         return Ok(());
     }
     Err(Error::new(ErrorKind::NotFound, "docker username not found"))
@@ -193,7 +212,7 @@ fn login() -> Result<(), Error> {
 
 fn logout() -> Result<(), Error> {
     if docker("logout", &[], "/tmp").is_ok() {
-        log("Disconnected successfully");
+        log("Disconnected successfully", LOG_WITHOUT_SPACE);
         return Ok(());
     }
     Err(Error::new(ErrorKind::NotFound, "docker logout not found"))
@@ -248,10 +267,10 @@ fn configuration() -> Result<Value, Error> {
     }
     Err(Error::last_os_error())
 }
-fn log(message: &str) {
+fn log(message: &str, t: &str) {
     println!(
         "{}",
-        format!("\x1b[1;32m ✔\x1b[0;37m {message}\x1b[0m").as_str()
+        format!("\x1b[1;32m{t}\x1b[0;37m {message}\x1b[0m").as_str()
     );
 }
 fn cmd(program: &str, args: &[&str]) -> Result<ExitStatus, Error> {
@@ -261,14 +280,23 @@ fn cmd(program: &str, args: &[&str]) -> Result<ExitStatus, Error> {
     Err(Error::new(ErrorKind::NotFound, "program not found"))
 }
 fn check_connexion(ip: &str, port: &str) -> Result<(), Error> {
-    log(format!("Checking the ssh connexion on {ip}").as_str());
+    log(
+        format!("Checking the ssh connexion on {ip}").as_str(),
+        LOG_WITH_SPACE,
+    );
     sleep(Duration::from_secs(1));
     if let Ok(status) = cmd("ncat", &["-z", ip, port]) {
         if status.success() {
-            log(format!("Can communicate to the {ip} server").as_str());
+            log(
+                format!("Can communicate to the {ip} server").as_str(),
+                LOG_WITH_SPACE,
+            );
             return Ok(());
         }
-        log(format!("Cannot communicate to the {ip} server").as_str());
+        log(
+            format!("Cannot communicate to the {ip} server").as_str(),
+            LOG_WITH_SPACE,
+        );
         return Err(Error::new(ErrorKind::NotFound, "ncat connexion failed"));
     }
     Err(Error::new(ErrorKind::NotFound, "ncat not founded"))
@@ -289,14 +317,6 @@ fn build() -> Result<(), Error> {
     }
     Err(Error::new(ErrorKind::NotFound, "Dockerfile not found"))
 }
-fn publish() -> Result<(), Error> {
-    assert!(list_images().is_ok());
-    let image = Text::new("Please enter the image to publish :")
-        .prompt()
-        .unwrap_or_default();
-    docker("push", &[image.as_str()], "/tmp")
-}
-
 fn list_container() -> Result<(), Error> {
     docker("container", &["ls"], "/tmp")
 }
@@ -344,89 +364,125 @@ fn deploy_local() -> Result<(), Error> {
         "docks.toml config not found",
     ))
 }
+
+fn server_founded(servers: usize) {
+    if servers.gt(&1) {
+        log(
+            format!("Deploying docker containers on {servers} servers").as_str(),
+            LOG_WITH_SPACE,
+        );
+    } else {
+        log(
+            format!("Deploying docker containers on {servers} server").as_str(),
+            LOG_WITH_SPACE,
+        );
+    }
+}
+
+fn manage_remote_container(image: &str, server: &str, ip: &str, port: &str, username: &str) {
+    log(
+        format!("Deploying {image} docker container on {server} server").as_str(),
+        LOG_WITH_SPACE,
+    );
+    assert!(upload_image(username, ip, image, port).is_ok());
+    log(
+        format!("The {image} has been deployed successfully on the {server} server").as_str(),
+        LOG_WITH_SPACE,
+    );
+    log(
+        format!("Stopping {image} before update on the {server} server").as_str(),
+        LOG_WITH_SPACE,
+    );
+    assert!(
+        ssh_run(
+            &["docker", "compose", "--project-directory", image, "down", ],
+            username,
+            ip,
+        )
+            .is_ok(),
+        "Failed to stop container"
+    );
+    log(
+        format!("Updating the {image} container on the {server} server").as_str(),
+        LOG_WITH_SPACE,
+    );
+    assert!(
+        ssh_run(
+            &["docker", "compose", "--project-directory", image, "pull"],
+            username,
+            ip
+        )
+            .is_ok(),
+        "Failed to update container"
+    );
+    log(
+        format!("The {image} container has been updated successfully on the {server} server")
+            .as_str(),
+        LOG_WITH_SPACE,
+    );
+    log(
+        format!("Restarting the {image} after upgrade on the {server} server").as_str(),
+        LOG_WITH_SPACE,
+    );
+    assert!(
+        ssh_run(
+            &[
+                "docker",
+                "compose",
+                "--project-directory",
+                image,
+                "--remove-orphans",
+                "up",
+                "-d",
+            ],
+            username,
+            ip
+        )
+            .is_ok(),
+        "Failed to start the container"
+    );
+    log(
+        format!("The {image} has been restarted successfully on the {server} server").as_str(),
+        LOG_WITH_SPACE,
+    );
+}
 fn deploy_to_remote() -> Result<(), Error> {
     if let Ok(docks) = configuration() {
         if let Ok(servers) = servers() {
-            let park = servers.len();
-            if park.gt(&1) {
-                log(format!("Deploying docker containers on {park} servers").as_str());
-            } else {
-                log(format!("Deploying docker containers on {park} server").as_str());
-            }
+            server_founded(servers.len());
             for server in &servers {
                 if let Some(table) = docks.as_table() {
                     if let Some(config) = table.get(server.as_str()) {
-                        let username = config.get("username").unwrap().as_str().unwrap();
-                        let port = config.get("port").unwrap().as_str().unwrap();
-                        let ip = config.get("ip").unwrap().as_str().unwrap();
-                        let containers = config.get("containers").unwrap().as_array().unwrap();
-                        assert!(
-                            check_connexion(ip, port).is_ok(),
-                            "Cannot deploy containers"
-                        );
+                        let username = config
+                            .get("username")
+                            .expect("missing username")
+                            .as_str()
+                            .expect("failed to parse username");
+                        let port = config
+                            .get("port")
+                            .expect("missing port")
+                            .as_str()
+                            .expect("failed to parse port");
+                        let ip = config
+                            .get("ip")
+                            .expect("missing ip")
+                            .as_str()
+                            .expect("missing ip");
+                        let containers = config
+                            .get("containers")
+                            .expect("missing containers")
+                            .as_array()
+                            .expect("failed to parse containers");
+                        if check_connexion(ip, port).is_err() {
+                            log(
+                                format!("Cannot communicate to the {server} server").as_str(),
+                                LOG_WITH_SPACE,
+                            );
+                            continue;
+                        }
                         for container in containers {
                             let image = container.as_str().unwrap();
-                            log(
-                                format!("Deploying {image} docker container on {server} server")
-                                    .as_str(),
-                            );
-                            assert!(upload_image(username, ip, image, port).is_ok());
-                            log(format!(
-                                "The {image} has been deployed successfully on the {server} server"
-                            )
-                            .as_str());
-                            log(
-                                format!("Stopping {image} before update on the {server} server")
-                                    .as_str(),
-                            );
-                            assert!(
-                                ssh_run(
-                                    &["docker", "compose", "--project-directory", image, "down",],
-                                    username,
-                                    ip,
-                                )
-                                .is_ok(),
-                                "Failed to stop container"
-                            );
-                            log(
-                                format!("Updating the {image} container on the {server} server")
-                                    .as_str(),
-                            );
-                            assert!(
-                                ssh_run(
-                                    &["docker", "compose", "--project-directory", image, "pull"],
-                                    username,
-                                    ip
-                                )
-                                .is_ok(),
-                                "Failed to update container"
-                            );
-                            log(format!("The {image} container has been updated successfully on the {server} server").as_str());
-                            log(format!(
-                                "Restarting the {image} after upgrade on the {server} server"
-                            )
-                            .as_str());
-                            assert!(
-                                ssh_run(
-                                    &[
-                                        "docker",
-                                        "compose",
-                                        "--project-directory",
-                                        image,
-                                        "--remove-orphans",
-                                        "up",
-                                        "-d",
-                                    ],
-                                    username,
-                                    ip
-                                )
-                                .is_ok(),
-                                "Failed to start the container"
-                            );
-                            log(format!(
-                                "The {image} has been restarted successfully on the {server} server"
-                            )
-                            .as_str());
+                            manage_remote_container(image, server, ip, port, username);
                         }
                     }
                 }
@@ -440,10 +496,16 @@ fn deploy_to_remote() -> Result<(), Error> {
 fn deploy() {
     let now = Instant::now();
     let date = Local::now();
-    log(format!("Starting deployment at {date}").as_str());
+    log(
+        format!("Starting deployment at {date}").as_str(),
+        LOG_WITH_SPACE,
+    );
     assert!(deploy_local().is_ok());
     assert!(deploy_to_remote().is_ok());
-    log(format!("The deployment take {} secs", now.elapsed().as_secs()).as_str());
+    log(
+        format!("The deployment take {} secs", now.elapsed().as_secs()).as_str(),
+        LOG_WITH_SPACE,
+    );
 }
 
 fn editor() -> Result<(), Error> {
@@ -469,7 +531,7 @@ fn dock_running() -> Result<(), Error> {
                     username.as_str().unwrap_or_default(),
                     ip.as_str().unwrap_or_default(),
                 )
-                .is_ok());
+                    .is_ok());
             }
         }
     }
@@ -506,7 +568,10 @@ fn stop() -> Result<(), Error> {
             .prompt()
             .unwrap_or_default();
         if docker("stop", &[image.as_str()], "/tmp").is_ok() {
-            log(format!("The container {image} has been stopped successfully").as_str());
+            log(
+                format!("The container {image} has been stopped successfully").as_str(),
+                LOG_WITHOUT_SPACE,
+            );
             if Confirm::new("stop an other container ? :")
                 .with_default(false)
                 .prompt()
@@ -547,11 +612,12 @@ fn start() -> Result<(), Error> {
             ],
             "/tmp",
         )
-        .is_ok()
+            .is_ok()
         {
             log(
                 format!("The container {image} has been started in the foreground successfully")
                     .as_str(),
+                LOG_WITHOUT_SPACE,
             );
             assert!(list_container().is_ok());
             if Confirm::new("run an other container ? :")
@@ -581,7 +647,10 @@ fn restart() -> Result<(), Error> {
             .unwrap();
 
         if docker("restart", &[image.as_str()], "/tmp").is_ok() {
-            log(format!("The container {image} has been restarted successfully").as_str());
+            log(
+                format!("The container {image} has been restarted successfully").as_str(),
+                LOG_WITHOUT_SPACE,
+            );
             assert!(list_container().is_ok());
             if Confirm::new("restart an other container ? :")
                 .with_default(false)
@@ -606,8 +675,8 @@ fn edit() -> Result<(), Error> {
         "Select a filename to edit",
         vec!["docks.toml", "compose.yaml", "Dockerfile"],
     )
-    .prompt()
-    .unwrap();
+        .prompt()
+        .unwrap();
     if let Ok(mut child) = Command::new("vim").arg(filename).current_dir(".").spawn() {
         if child.wait().is_ok() {
             return Ok(());
@@ -670,9 +739,12 @@ fn pull() {
             &[format!("{}:{}", image.as_str(), tag.as_str()).as_str()],
             "/tmp",
         )
-        .is_ok()
+            .is_ok()
         {
-            log(format!("The container {image} has been updated successfully").as_str());
+            log(
+                format!("The container {image} has been updated successfully").as_str(),
+                LOG_WITHOUT_SPACE,
+            );
 
             assert!(ps().is_ok());
             if Confirm::new("pull an other image ? :")
@@ -733,7 +805,6 @@ fn main() {
                 "stop" => assert!(stop().is_ok()),
                 "mkdir" => assert!(mkdir().is_ok()),
                 "logs" => logs(),
-                "make repositories" => make(),
                 "commit" => assert!(commit().is_ok()),
                 "show containers" => assert!(list_container().is_ok()),
                 "show volumes" => assert!(list_volumes().is_ok()),
@@ -747,21 +818,21 @@ fn main() {
                 "ps" => assert!(ps().is_ok()),
                 "pull" => pull(),
                 "build" => assert!(build().is_ok()),
-                "push" => assert!(publish().is_ok()),
+                "publish" => publish(),
                 "editor" => assert!(editor().is_ok()),
                 "exit" => break,
                 _ => continue,
             }
         }
     } else {
-        log("$DOCKS_WORKING_DIR not founded");
+        log("$DOCKS_WORKING_DIR not founded", LOG_WITHOUT_SPACE);
     }
-    log("Bye");
+    log("Bye", LOG_WITHOUT_SPACE);
 }
 
 fn init() -> io::Result<()> {
     let mut f = File::create("docks.toml")?;
-    writeln!(f, "[local]\ncontainers = []\n\n[lab]\nusername = \"root\"\nip = \"lab.ji\"\nport = \"22\"\ncontainers = []\n")
+    writeln!(f, "# Docker user information (optional)\n[docker]\nusername = \"\"\nemail = \"\"\n\n# Private registry information (if you are using one)\n[registry]\n# url = \"your_registry_url\"  # Uncomment and fill in if necessary\n# username = \"your_username\"  # Uncomment and fill in if necessary\n# password = \"your_password\"  # Uncomment and fill in if necessary\n\n# SSH settings for remote deployment\n[ssh]\nport = 22\nuser = \"root\"\n\n# Docker image tag configuration\n[hub]\ntags = [[\"version\", [\"stable\", \"beta\", \"nightly\", \"latest\"]],[\"env\", [\"staging\", \"dev\", \"prod\"]],[\"schedule\", [\"hourly\", \"daily\", \"weekly\", \"monthly\"]]]\n\n# List of Docker images to build\n[[hub.images]]\nname = \"\"\ntags = []\npath = \"./rlang\" # Path relative to the configuration file directory\npath = \"\"\n\n[deploy]\nlocal = []\n\n[deploy.remotes]\n")
 }
 
 fn enter() {
@@ -781,7 +852,10 @@ fn commit() -> Result<(), Error> {
         .prompt()
         .unwrap();
     if docker("commit", &[id.as_str(), image.as_str()], "/tmp").is_ok() {
-        log(format!("The image {image} has been created").as_str());
+        log(
+            format!("The image {image} has been created").as_str(),
+            LOG_WITHOUT_SPACE,
+        );
         return Ok(());
     }
     Err(Error::new(
@@ -789,9 +863,38 @@ fn commit() -> Result<(), Error> {
         "Failed to commit image",
     ))
 }
-fn make() {
+fn publish() {
+    let username = Text::new("username : ")
+        .with_default(var("USER").unwrap().as_str())
+        .prompt()
+        .unwrap();
+    if let Ok(public) = var("DOCKS_PUBLIC_DIR") {
+        for (image, tags) in &to_publish() {
+            for tag in tags {
+                assert!(docker(
+                    "buildx",
+                    &[
+                        "build",
+                        "-t",
+                        format!("{username}/{image}:{tag}").as_str(),
+                        format!("{public}/{image}/{tag}").as_str()
+                    ],
+                    "."
+                )
+                    .is_ok());
+                assert!(
+                    docker("push", &[format!("{username}/{image}:{tag}").as_str()], ".").is_ok()
+                );
+            }
+        }
+    }
+    assert!(clear().is_ok());
+    log("all images are published successfully", LOG_WITHOUT_SPACE);
+}
+fn to_publish() -> HashMap<String, Vec<String>> {
+    let mut data: HashMap<String, Vec<String>> = HashMap::new();
     if let Ok(docks) = configuration() {
-        if let Some(repositories) = docks.get("repositories") {
+        if let Some(repositories) = docks.get("hub") {
             if let Some(repos) = repositories.as_table() {
                 if let Some(i) = repos.get("images") {
                     if let Some(images) = i.as_array() {
@@ -800,29 +903,14 @@ fn make() {
                                 if let Some(name) = x.first() {
                                     if let Some(tag) = x.get(1) {
                                         if let Some(tags) = tag.as_array() {
+                                            let mut x: Vec<String> = Vec::new();
                                             for tag in tags {
-                                                if let Some(tag_name) = tag.as_str() {
-                                                    if let Some(user) = repositories.get("username")
-                                                    {
-                                                        if let Ok(public) = var("DOCKS_PUBLIC_DIR")
-                                                        {
-                                                            if let Some(username) = user.as_str() {
-                                                                if let Some(img) = name.as_str() {
-                                                                    assert!(docker("buildx", &["build", "-t", format!("{username}/{img}:{tag_name}").as_str(), format!("{public}/{img}/{tag_name}").as_str()], ".").is_ok());
-                                                                    assert!(docker(
-                                                                        "push",
-                                                                        &[format!(
-                                                                            "{username}/{img}:{tag_name}"
-                                                                        )
-                                                                            .as_str()],
-                                                                        "."
-                                                                    )
-                                                                        .is_ok());
-                                                                }
-                                                            }
-                                                        }
-                                                    }
+                                                if let Some(name) = tag.as_str() {
+                                                    x.push(name.to_string());
                                                 }
+                                            }
+                                            if let Some(image) = name.as_str() {
+                                                data.insert(image.to_string(), x);
                                             }
                                         }
                                     }
@@ -834,6 +922,7 @@ fn make() {
             }
         }
     }
+    data
 }
 fn os() {
     loop {
@@ -861,14 +950,17 @@ fn os() {
                 "mageia",
             ],
         )
-        .prompt()
-        .unwrap();
+            .prompt()
+            .unwrap();
         let tag = Text::new("Please enter the tag for the image :")
             .with_default("latest")
             .prompt()
             .unwrap();
         assert!(docker("pull", &[format!("{image}:{tag}").as_str()], "/tmp").is_ok());
-        log(format!("{image}:{tag} has been downloaded successfully").as_str());
+        log(
+            format!("{image}:{tag} has been downloaded successfully").as_str(),
+            LOG_WITHOUT_SPACE,
+        );
         if Confirm::new("download an other operating system ?")
             .with_default(false)
             .prompt()
