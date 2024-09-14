@@ -10,6 +10,10 @@ repository = "https://github.com/otechdo/docks"
 readme = "README.md"
 keywords = ["docker", "upload", "container", "management", "apps"]
 
+[[bin]]
+name = "dockx"
+path = "src/dockx.rs"
+
 [dependencies]
 chrono = "0.4.38"
 inquire = { version = "0.7.5", features = ["chrono", "console"] }

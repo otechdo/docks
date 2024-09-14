@@ -3,7 +3,7 @@ enabled = true
 
 [notifications.email]
 smtp_server = "${SMTP_SERVER}"
-smtp_port = 587
+smtp_port = "${SMTP_PORT}"
 smtp_username = "${SMTP_USERNAME}"
 smtp_password = "${SMTP_PASSWORD}"
 from_address = "${SMTP_FROM}"
@@ -18,7 +18,7 @@ default = "simply"
 [[cron.jobs]]
 name = "tache_cron_1"
 schedule = "0 * * * *"
-command = "echo 'Bonjour le monde !'"
+commands = ["docker buildx build .", "docker push ."]
 log = "/var/log/docks/tache_cron_1.log"
 retries = 3
 retry_delay = 60

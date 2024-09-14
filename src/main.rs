@@ -176,7 +176,7 @@ fn upload_image(user: &str, ip: &str, image: &str, port: &str) -> Result<(), Err
                     .expect("missing DOCKS_PUBLIC_DIR")
                     .as_str()
             )
-                .as_str(),
+            .as_str(),
         )
         .arg(format!("{user}@{ip}:{image}").as_str())
         .stdout(Stdio::null())
@@ -395,11 +395,11 @@ fn manage_remote_container(image: &str, server: &str, ip: &str, port: &str, user
     );
     assert!(
         ssh_run(
-            &["docker", "compose", "--project-directory", image, "down", ],
+            &["docker", "compose", "--project-directory", image, "down",],
             username,
             ip,
         )
-            .is_ok(),
+        .is_ok(),
         "Failed to stop container"
     );
     log(
@@ -412,7 +412,7 @@ fn manage_remote_container(image: &str, server: &str, ip: &str, port: &str, user
             username,
             ip
         )
-            .is_ok(),
+        .is_ok(),
         "Failed to update container"
     );
     log(
@@ -438,7 +438,7 @@ fn manage_remote_container(image: &str, server: &str, ip: &str, port: &str, user
             username,
             ip
         )
-            .is_ok(),
+        .is_ok(),
         "Failed to start the container"
     );
     log(
@@ -531,7 +531,7 @@ fn dock_running() -> Result<(), Error> {
                     username.as_str().unwrap_or_default(),
                     ip.as_str().unwrap_or_default(),
                 )
-                    .is_ok());
+                .is_ok());
             }
         }
     }
@@ -612,7 +612,7 @@ fn start() -> Result<(), Error> {
             ],
             "/tmp",
         )
-            .is_ok()
+        .is_ok()
         {
             log(
                 format!("The container {image} has been started in the foreground successfully")
@@ -675,8 +675,8 @@ fn edit() -> Result<(), Error> {
         "Select a filename to edit",
         vec!["docks.toml", "compose.yaml", "Dockerfile"],
     )
-        .prompt()
-        .unwrap();
+    .prompt()
+    .unwrap();
     if let Ok(mut child) = Command::new("vim").arg(filename).current_dir(".").spawn() {
         if child.wait().is_ok() {
             return Ok(());
@@ -739,7 +739,7 @@ fn pull() {
             &[format!("{}:{}", image.as_str(), tag.as_str()).as_str()],
             "/tmp",
         )
-            .is_ok()
+        .is_ok()
         {
             log(
                 format!("The container {image} has been updated successfully").as_str(),
@@ -881,7 +881,7 @@ fn publish() {
                     ],
                     "."
                 )
-                    .is_ok());
+                .is_ok());
                 assert!(
                     docker("push", &[format!("{username}/{image}:{tag}").as_str()], ".").is_ok()
                 );
@@ -950,8 +950,8 @@ fn os() {
                 "mageia",
             ],
         )
-            .prompt()
-            .unwrap();
+        .prompt()
+        .unwrap();
         let tag = Text::new("Please enter the tag for the image :")
             .with_default("latest")
             .prompt()

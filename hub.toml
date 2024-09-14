@@ -6,11 +6,7 @@ password = ""
 [hub]
 username = "otechdo"
 email = "otechdo@otechdo.com"
-tags = [
-    ["version", ["stable", "beta", "nightly", "latest"]],
-    ["env", ["staging", "dev", "prod"]],
-    ["schedule", ["hourly", "daily", "weekly", "monthly"]],
-]
+tags = { version = ["stable", "beta", "nightly", "latest"], env = ["staging", "dev", "prod"], schedule = ["hourly", "weekly", "monthly"] }
 
 [[hub.images]]
 name = "rlang"
